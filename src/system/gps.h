@@ -15,13 +15,18 @@ Maintainer: Miguel Luis and Gregory Cristian
 #ifndef __GPS_H__
 #define __GPS_H__
 
+enum NmeaDataType {
+    NMEA_GGA,
+    NMEA_RMC
+};
+
 /* Structure to handle the GPS parsed data in ASCII */
 typedef struct
 {
-    char NmeaDataType[6];
+    enum NmeaDataType DataType;
     char NmeaUtcTime[11];
     char NmeaDataStatus[2];
-    char NmeaLatitude[10];
+    char NmeaLatitude[11];
     char NmeaLatitudePole[2];
     char NmeaLongitude[11];
     char NmeaLongitudePole[2];
@@ -32,6 +37,7 @@ typedef struct
     char NmeaAltitudeUnit[2];
     char NmeaHeightGeoid[8];
     char NmeaHeightGeoidUnit[2];
+
     char NmeaSpeed[8];
     char NmeaDetectionAngle[8];
     char NmeaDate[8];

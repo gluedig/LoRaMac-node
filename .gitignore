@@ -18,3 +18,9 @@ bin/
 *.pbxproj
 *.cogui
 *.comarker
+*.d
+*.o
+*.elf
+*.bin
+*.hex
+*.map

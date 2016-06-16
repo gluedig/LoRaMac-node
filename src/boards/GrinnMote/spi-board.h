@@ -6,20 +6,25 @@
 (______/|_____)_|_|_| \__)_____)\____)_| |_|
     (C)2013 Semtech
 
-Description: Hex coder selector driver implementation
+Description: Bleeper board SPI driver implementation
 
 License: Revised BSD License, see LICENSE.TXT file include in the project
 
 Maintainer: Miguel Luis and Gregory Cristian
 */
-#ifndef __SELECTOR_H__
-#define __SELECTOR_H__
+#ifndef __SPI_MCU_H__
+#define __SPI_MCU_H__
 
 /*!
- * Gets the current hex coder selector position
- *
- * \retval position Hex coder current position ( On error position = 255 )
+ * SPI driver structure definition
  */
-uint8_t SelectorGetValue( void );
+struct Spi_s
+{
+    SPI_HandleTypeDef Spi;
+    Gpio_t Mosi;
+    Gpio_t Miso;
+    Gpio_t Sclk;
+    Gpio_t Nss;
+};
 
-#endif // __SELECTOR_H__
+#endif  // __SPI_MCU_H__
