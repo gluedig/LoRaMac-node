@@ -34,7 +34,7 @@ Gpio_t Led2;
 Gpio_t Led3;
 Gpio_t Led4;
 
-Gpio_t GpsReset;
+Gpio_t GpsReset, GpsWake;
 
 I2c_t I2c;
 Uart_t Uart1;
@@ -84,6 +84,7 @@ void BoardInitPeriph( void )
 {
     /* Init the GPIO pins */
     GpioInit( &GpsReset, GPS_RESET, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
+    GpioInit( &GpsWake, GPS_WAKE, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
     GpioInit( &Led1, LED_1, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
     GpioInit( &Led2, LED_2, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
     GpioInit( &Led3, LED_3, PIN_OUTPUT, PIN_PUSH_PULL, PIN_NO_PULL, 0 );
@@ -129,7 +130,7 @@ void BoardInitMcu( void )
     if( McuInitialized == false )
     {
         McuInitialized = true;
-        //CalibrateTimer( );
+        CalibrateTimer( );
     }
 }
 
@@ -154,11 +155,13 @@ void BoardDeInitMcu( void )
 
 void BoardWakePeriph( void )
 {
+    MPC9808Shutdown( false );
     GpsMcuWake( );
 }
 
 void BoardSleepPeriph( void )
 {
+    MPC9808Shutdown( true );
     GpsMcuSleep( );
 }
 

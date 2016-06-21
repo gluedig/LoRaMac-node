@@ -55,8 +55,6 @@ uint8_t MPC9808Init( void )
             return FAIL;
         }
 	MPC9808Write( MPC9808_REG_CONFIG, 0 );
-	/* set resolution to 0.25 */
-    //    MPC9808Write( MPC9808_REG_RES, 1 );
 	MPC9808Initialized = true;
     }
     return SUCCESS;
@@ -94,6 +92,8 @@ int16_t MPC9808ReadTemperature( void )
 
     MPC9808Read( MPC9808_REG_TEMP, &regval);
     temp = ((regval & 0xF00) >> 4) | ((regval & 0xF0) >> 4);
+    temp *= 100;
+    temp += ((regval & 0xF) * 625) / 100;
 
     /* negative ? */
     if ( regval & 0x1000)

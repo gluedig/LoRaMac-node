@@ -30,6 +30,7 @@ void GpsMcuIrqNotify( UartNotifyId_t id );
 
 void GpsMcuSleep( void );
 void GpsMcuWake( void );
+void GpsMcuReset( void );
 
 
 #endif  // __GPS_BOARD_H__

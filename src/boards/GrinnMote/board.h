@@ -103,6 +103,7 @@ Maintainer: Miguel Luis and Gregory Cristian
  * GPIO pins objects
  */
 extern Gpio_t GpsReset;
+extern Gpio_t GpsWake;
 extern Gpio_t Led1;
 extern Gpio_t Led2;
 extern Gpio_t Led3;

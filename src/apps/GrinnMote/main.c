@@ -64,7 +64,7 @@ Maintainer: Miguel Luis and Gregory Cristian
  *
  * \remark Please note that ETSI mandates duty cycled transmissions. Use only for test purposes
  */
-#define LORAWAN_DUTYCYCLE_ON                        true
+#define LORAWAN_DUTYCYCLE_ON                        false
 
 #define USE_SEMTECH_DEFAULT_CHANNEL_LINEUP          1
 
@@ -176,14 +176,18 @@ static bool NextTx = true;
 /*!
  * Device states
  */
-static enum eDevicState
+static enum eDeviceState
 {
     DEVICE_STATE_INIT,
     DEVICE_STATE_JOIN,
     DEVICE_STATE_SEND,
     DEVICE_STATE_CYCLE,
-    DEVICE_STATE_SLEEP
+    DEVICE_STATE_SLEEP_ENTER,
+    DEVICE_STATE_SLEEP,
+    DEVICE_STATE_WAKEUP
 }DeviceState;
+
+static enum eDeviceState NextDeviceState;
 
 /*!
  * LoRaWAN compliance tests support data
@@ -219,7 +223,7 @@ static void PrepareTxFrame( uint8_t port )
             int16_t altitudeGps = 0xFFFF;
             uint8_t batteryLevel = 0;
 
-            temperature = ( int16_t )( MPC9808ReadTemperature( ) * 100 );       // in °C * 100
+            temperature = MPC9808ReadTemperature( );       // in °C * 100
             batteryLevel = BoardGetBatteryLevel( );                             // 1 (very low) to 254 (fully charged)
             GpsGetLatestGpsPositionBinary( &latitude, &longitude );
             altitudeGps = GpsGetLatestGpsAltitude( );                           // in m
@@ -246,7 +250,7 @@ static void PrepareTxFrame( uint8_t port )
             uint16_t altitudeGps = 0xFFFF;
             uint8_t batteryLevel = 0;
 
-            temperature = ( int16_t )( MPL3115ReadTemperature( ) * 100 );       // in °C * 100
+            temperature = MPC9808ReadTemperature( );       // in °C * 100
 
             batteryLevel = BoardGetBatteryLevel( );                             // 1 (very low) to 254 (fully charged)
             GpsGetLatestGpsPositionBinary( &latitude, &longitude );
@@ -359,14 +363,15 @@ static void OnTxNextPacketTimerEvent( void )
     {
         if( mibReq.Param.IsNetworkJoined == true )
         {
-            DeviceState = DEVICE_STATE_SEND;
+            NextDeviceState = DEVICE_STATE_SEND;
             NextTx = true;
         }
         else
         {
-            DeviceState = DEVICE_STATE_JOIN;
+            NextDeviceState = DEVICE_STATE_JOIN;
         }
     }
+    DeviceState = DEVICE_STATE_WAKEUP;
 }
 
 /*!
@@ -631,7 +636,7 @@ int main( void )
 
     BoardInitMcu( );
     BoardInitPeriph( );
-
+    NextDeviceState = DEVICE_STATE_INIT;
     DeviceState = DEVICE_STATE_INIT;
 
     while( 1 )
@@ -701,7 +706,8 @@ int main( void )
                 // Schedule next packet transmission
                 TxDutyCycleTime = OVER_THE_AIR_ACTIVATION_DUTYCYCLE;
                 DeviceState = DEVICE_STATE_CYCLE;
-
+	        TimerSetValue( &TxNextPacketTimer, TxDutyCycleTime );
+	        TimerStart( &TxNextPacketTimer );
 #else
                 // Choose a random device address if not already defined in Comissioning.h
                 if( DevAddr == 0 )
@@ -756,24 +762,35 @@ int main( void )
                     TxDutyCycleTime = APP_TX_DUTYCYCLE + randr( -APP_TX_DUTYCYCLE_RND, APP_TX_DUTYCYCLE_RND );
                 }
                 DeviceState = DEVICE_STATE_CYCLE;
-                break;
+                // Schedule next packet transmission
+	        TimerSetValue( &TxNextPacketTimer, TxDutyCycleTime );
+	        TimerStart( &TxNextPacketTimer );
+		break;
             }
             case DEVICE_STATE_CYCLE:
             {
-                DeviceState = DEVICE_STATE_SLEEP;
-
-                // Schedule next packet transmission
-                TimerSetValue( &TxNextPacketTimer, TxDutyCycleTime );
-                TimerStart( &TxNextPacketTimer );
-                break;
+		if ( GpsGotMsg() ) {
+		    DeviceState = DEVICE_STATE_SLEEP_ENTER;
+		}
+		break;
             }
-            case DEVICE_STATE_SLEEP:
+            case DEVICE_STATE_SLEEP_ENTER:
             {
-#ifdef SLEEP
-		TimerLowPowerHandler( );
-#endif
-                break;
+		BoardSleepPeriph();
+		DeviceState = DEVICE_STATE_SLEEP;
+		break;
+	    }
+	    case DEVICE_STATE_SLEEP:
+	    {
+       		TimerLowPowerHandler( );
+		break;
             }
+	    case DEVICE_STATE_WAKEUP:
+	    {
+		BoardWakePeriph();
+		DeviceState = NextDeviceState;
+		break;
+	    }
             default:
             {
                 DeviceState = DEVICE_STATE_INIT;

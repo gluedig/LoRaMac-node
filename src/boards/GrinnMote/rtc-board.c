@@ -502,7 +502,6 @@ void RtcEnterLowPowerStopMode( void )
 {
     if( ( LowPowerDisableDuringTask == false ) && ( RtcTimerEventAllowsLowPower == true ) )
     {
-	BoardSleepPeriph( );
         BoardDeInitMcu( );
 
         /* Disable the Power Voltage Detector */
@@ -527,7 +526,6 @@ void RtcRecoverMcuStatus( void )
         ( __HAL_RCC_GET_SYSCLK_SOURCE( ) == RCC_SYSCLKSOURCE_STATUS_MSI ) )
     {
         BoardInitMcu( );
-	BoardWakePeriph( );
     }
 }
 

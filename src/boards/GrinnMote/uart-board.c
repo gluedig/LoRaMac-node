@@ -166,24 +166,46 @@ uint8_t UartMcuGetChar( Uart_t *obj, uint8_t *data )
     return 1;
 }
 
+uint8_t UartMcuPutBuffer( Uart_t *obj, uint8_t *data, uint16_t size )
+{
+/*    if( IsFifoFull( &obj->FifoTx ) == false )
+    {
+	int i;
+        __disable_irq( );
+	for ( i = 0; i < size; i++) {
+	    FifoPush( &obj->FifoTx, data[i] );
+	}
+        __enable_irq( );
+        // Enable the USART Transmit interrupt
+        __HAL_UART_ENABLE_IT( &UartHandle, USART_IT_TXE );
+        return 0; // OK
+    }
+
+    return 1;
+*/
+    return HAL_UART_Transmit( &UartHandle, data, size, 1000);
+}
+
 void HAL_UART_TxCpltCallback( UART_HandleTypeDef *UartHandle )
 {
-    uint8_t data;
-
-    if( IsFifoEmpty( &Uart1.FifoTx ) == false )
-    {
-        data = FifoPop( &Uart1.FifoTx );
-        //  Write one byte to the transmit data register
-        HAL_UART_Transmit_IT( UartHandle, &data, 1 );
-    }
-    else
+    if ( IsFifoEmpty( &Uart1.FifoTx ) )
     {
         // Disable the USART Transmit interrupt
         HAL_NVIC_DisableIRQ( USART1_IRQn );
-    }
-    if( Uart1.IrqNotify != NULL )
-    {
-        Uart1.IrqNotify( UART_NOTIFY_TX );
+	return;
+    } else {
+        uint8_t data[Uart1.FifoTx.Size];
+	uint16_t count = 0;
+	while ( IsFifoEmpty( &Uart1.FifoTx ) == false ) {
+	    data[count++] = FifoPop( &Uart1.FifoTx );
+	}
+
+        //  Write
+        HAL_UART_Transmit_IT( UartHandle, data, count );
+	if( Uart1.IrqNotify != NULL )
+        {
+	    Uart1.IrqNotify( UART_NOTIFY_TX );
+	}
     }
 }
 

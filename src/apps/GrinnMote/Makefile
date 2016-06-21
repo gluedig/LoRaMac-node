@@ -38,8 +38,8 @@ SIZE    = $(GCC_BIN)arm-none-eabi-size
 
 
 CPU = -mcpu=cortex-m3 -mthumb
-CC_FLAGS = $(CPU) -c -g -fno-common -fmessage-length=0 -Wall -Wextra -fno-exceptions -ffunction-sections -fdata-sections -fomit-frame-pointer -MMD -MP
-CC_FLAGS += -Wimplicit-function-declaration
+CC_FLAGS = $(CPU) -c -fno-common -fmessage-length=0 -Wall -Wextra -fno-exceptions -ffunction-sections -fdata-sections -fomit-frame-pointer -MMD -MP
+CC_FLAGS += -Werror=implicit-function-declaration
 CC_SYMBOLS = -DSTM32L151xB -DUSE_BAND_868 -DUSE_HAL_DRIVER -DUSE_DEBUGGER
 
 LD_FLAGS = $(CPU) -Wl,--gc-sections --specs=nano.specs -Wl,-Map=$(PROJECT).map,--cref
@@ -48,7 +48,7 @@ LD_SYS_LIBS = -lstdc++ -lsupc++ -lm -lc -lgcc -lnosys
 
 
 ifeq ($(DEBUG), 1)
-  CC_FLAGS += -DDEBUG -O0
+  CC_FLAGS += -DDEBUG -O0 -g
 else
   CC_FLAGS += -DNDEBUG -Os
 endif

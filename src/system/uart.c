@@ -123,6 +123,7 @@ uint8_t UartPutBuffer( Uart_t *obj, uint8_t *buffer, uint16_t size )
     }
     else
     {
+/*
         uint8_t retryCount;
         uint16_t i;
 
@@ -141,6 +142,8 @@ uint8_t UartPutBuffer( Uart_t *obj, uint8_t *buffer, uint16_t size )
             }
         }
         return 0; // OK
+*/
+	return UartMcuPutBuffer( obj, buffer, size );
     }
 }
 

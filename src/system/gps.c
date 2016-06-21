@@ -42,9 +42,6 @@ static int32_t LongitudeBinary = 0;
 
 static int16_t Altitude = 0xFFFF;
 
-static char lastGGA[128];
-static char lastRMC[128];
-
 void GpsInit( void )
 {
     GpsMcuInit( );
@@ -305,8 +302,6 @@ uint8_t GpsParseGpsData( int8_t *rxBuffer, int32_t rxBufferSize )
     if( strncmp( ( const char* )NmeaDataType, ( const char* )NmeaDataTypeGPGGA, 5 ) == 0 )
     {
 	NewGpsData.DataType = NMEA_GGA;
-	memset(&lastGGA, 0, 128);
-	memcpy(&lastGGA, rxBuffer, 128);
 
         // NmeaUtcTime
         fieldSize = 0;
@@ -480,8 +475,6 @@ uint8_t GpsParseGpsData( int8_t *rxBuffer, int32_t rxBufferSize )
     else if ( strncmp( ( const char* )NmeaDataType, ( const char* )NmeaDataTypeGPRMC, 5 ) == 0 )
     {
 	NewGpsData.DataType = NMEA_RMC;
-	memset(&lastRMC, 0, 128);
-	memcpy(&lastRMC, rxBuffer, 128);
 
         // NmeaUtcTime
         fieldSize = 0;

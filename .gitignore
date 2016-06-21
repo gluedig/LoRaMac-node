@@ -24,3 +24,5 @@ bin/
 *.bin
 *.hex
 *.map
+tags
+cscope.out
