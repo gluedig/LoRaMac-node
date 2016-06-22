@@ -53,6 +53,10 @@ else
   CC_FLAGS += -DNDEBUG -Os
 endif
 
+ifeq ($(NO_SLEEP), 1)
+  CC_FLAGS += -DNO_SLEEP
+endif
+
 .PHONY: all clean lst size
 
 all: $(PROJECT).bin $(PROJECT).hex size

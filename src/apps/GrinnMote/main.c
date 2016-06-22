@@ -30,13 +30,13 @@ Maintainer: Miguel Luis and Gregory Cristian
 /*!
  * Defines the application data transmission duty cycle. 5s, value in [ms].
  */
-#define APP_TX_DUTYCYCLE                            30000
+#define APP_TX_DUTYCYCLE                            90000
 
 /*!
  * Defines a random delay for application data transmission duty cycle. 1s,
  * value in [ms].
  */
-#define APP_TX_DUTYCYCLE_RND                        1000
+#define APP_TX_DUTYCYCLE_RND                        5000
 
 /*!
  * Default datarate
@@ -225,8 +225,13 @@ static void PrepareTxFrame( uint8_t port )
 
             temperature = MPC9808ReadTemperature( );       // in °C * 100
             batteryLevel = BoardGetBatteryLevel( );                             // 1 (very low) to 254 (fully charged)
-            GpsGetLatestGpsPositionBinary( &latitude, &longitude );
-            altitudeGps = GpsGetLatestGpsAltitude( );                           // in m
+	    if ( GpsHasFix() ) {
+         	GpioWrite( &Led3, 1 );
+		GpsGetLatestGpsPositionBinary( &latitude, &longitude );
+		altitudeGps = GpsGetLatestGpsAltitude( );                           // in m
+	    } else {
+         	GpioWrite( &Led3, 0 );
+	    }
 
             AppData[0] = AppLedStateOn;
             AppData[1] = ( pressure >> 8 ) & 0xFF;
@@ -769,9 +774,8 @@ int main( void )
             }
             case DEVICE_STATE_CYCLE:
             {
-		if ( GpsGotMsg() ) {
+		if ( GpsCanSleep() )
 		    DeviceState = DEVICE_STATE_SLEEP_ENTER;
-		}
 		break;
             }
             case DEVICE_STATE_SLEEP_ENTER:

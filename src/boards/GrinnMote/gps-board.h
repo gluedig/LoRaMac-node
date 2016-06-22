@@ -16,8 +16,6 @@ Maintainer: Miguel Luis and Gregory Cristian
 #define __GPS_BOARD_H__
 
 
-bool GpsGotMsg( void );
-
 /*!
  * \brief Low level Initialisation of the UART and IRQ for the GPS
  */

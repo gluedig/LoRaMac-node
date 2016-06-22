@@ -132,4 +132,7 @@ void GpsFormatGpsData( void );
  */
 void GpsResetPosition( void );
 
+bool GpsCanSleep( void );
+void GpsResetCounter( void );
+
 #endif  // __GPS_H__

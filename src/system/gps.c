@@ -41,6 +41,8 @@ static int32_t LatitudeBinary = 0;
 static int32_t LongitudeBinary = 0;
 
 static int16_t Altitude = 0xFFFF;
+static uint32_t NmeaMessagesTotal = 0;
+static uint32_t NmeaMessagesOk = 0;
 
 void GpsInit( void )
 {
@@ -283,6 +285,8 @@ uint8_t GpsParseGpsData( int8_t *rxBuffer, int32_t rxBufferSize )
     {
         return FAIL;
     }
+
+    NmeaMessagesTotal++;
 
     fieldSize = 0;
     while( rxBuffer[i + fieldSize++] != ',' )
@@ -607,8 +611,11 @@ uint8_t GpsParseGpsData( int8_t *rxBuffer, int32_t rxBufferSize )
         return FAIL;
     }
     memcpy(&NmeaGpsData, &NewGpsData, sizeof(tNmeaGpsData));
+    NmeaMessagesOk++;
     if ( GpsHasFix( ) )
+    {
 	GpsFormatGpsData( );
+    }
     return SUCCESS;
 }
 
@@ -625,4 +632,19 @@ void GpsResetPosition( void )
     Longitude = 0;
     LatitudeBinary = 0;
     LongitudeBinary = 0;
+}
+
+bool GpsCanSleep( void )
+{
+    if ( GpsHasFix() && (NmeaMessagesOk > 10) )
+	return true;
+    if ( NmeaMessagesOk > 90 )
+	    return true;
+
+    return false;
+}
+
+void GpsResetCounter( void )
+{
+    NmeaMessagesOk = 0;
 }

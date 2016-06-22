@@ -33,11 +33,8 @@ uint8_t NmeaString[128];
  */
 uint8_t NmeaStringSize = 0;
 
-uint32_t NmeaMessagesTotal = 0;
-uint32_t NmeaMessagesOk = 0;
 bool asleep = false;
 uint8_t wakeup_retries = 5;
-
 
 TimerEvent_t GpsLedTimer, GpsResetTimer, GpsWakeupTimer;
 
@@ -85,7 +82,6 @@ void GpsMcuInit( void )
 void GpsMcuWake( void )
 {
     char sleep_cmd[] = "$PMTK225,0*2B\r\n";
-    NmeaMessagesTotal = NmeaMessagesOk = 0;
 
     FifoInit( &Uart1.FifoRx, RxBuffer, FIFO_RX_SIZE );
     FifoInit( &Uart1.FifoTx, TxBuffer, FIFO_TX_SIZE );
@@ -108,10 +104,10 @@ void GpsMcuSleep( void )
 {
     if ( !asleep ) {
 	char wake_cmd[] = "$PMTK161,0*28\r\n";
-	NmeaMessagesTotal = NmeaMessagesOk = 0;
 	UartPutBuffer( &Uart1, (uint8_t*)wake_cmd, 15 );
 	UartDeInit( &Uart1 );
 	asleep = true;
+	GpsResetCounter();
     }
 }
 
@@ -134,18 +130,11 @@ void GpsMcuIrqNotify( UartNotifyId_t id )
             if( data == '\n' )
             {
                 NmeaString[NmeaStringSize] = '\0';
-		NmeaMessagesTotal++;
-                if (GpsParseGpsData( ( int8_t* )NmeaString, NmeaStringSize )) {
-		    NmeaMessagesOk++;
+	        if (GpsParseGpsData( ( int8_t* )NmeaString, NmeaStringSize )) {
 		    GpioWrite(&Led4, 1);
 		    TimerStart( &GpsLedTimer );
 		}
 	    }
         }
     }
-}
-
-bool GpsGotMsg( void )
-{
-    return NmeaMessagesOk > 10;
 }
