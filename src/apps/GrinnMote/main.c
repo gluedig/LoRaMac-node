@@ -22,6 +22,9 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "LoRaMac.h"
 #include "Comissioning.h"
 
+
+#define FIX_WAIT_TIME    45000 //45s
+
 /*!
  * Join requests trials duty cycle.
  */
@@ -168,6 +171,8 @@ static TimerEvent_t Led1Timer;
  */
 static TimerEvent_t Led2Timer;
 
+static TimerEvent_t FixTimer;
+
 /*!
  * Indicates if a new packet can be sent
  */
@@ -181,7 +186,10 @@ static enum eDeviceState
     DEVICE_STATE_INIT,
     DEVICE_STATE_JOIN,
     DEVICE_STATE_SEND,
-    DEVICE_STATE_CYCLE,
+    DEVICE_STATE_SEND_DONE,
+    DEVICE_STATE_START_FIX,
+    DEVICE_STATE_WAIT_FIX,
+    DEVICE_STATE_END_FIX,
     DEVICE_STATE_SLEEP_ENTER,
     DEVICE_STATE_SLEEP,
     DEVICE_STATE_WAKEUP
@@ -368,7 +376,7 @@ static void OnTxNextPacketTimerEvent( void )
     {
         if( mibReq.Param.IsNetworkJoined == true )
         {
-            NextDeviceState = DEVICE_STATE_SEND;
+            NextDeviceState = DEVICE_STATE_START_FIX;
             NextTx = true;
         }
         else
@@ -397,6 +405,12 @@ static void OnLed2TimerEvent( void )
     TimerStop( &Led2Timer );
     // Switch LED 2 OFF
     GpioWrite( &Led2, 0 );
+}
+
+static void OnFixTimerEvent( void )
+{
+    TimerStop( &FixTimer );
+    DeviceState = DEVICE_STATE_END_FIX;
 }
 
 /*!
@@ -498,8 +512,8 @@ static void McpsIndication( McpsIndication_t *mcpsIndication )
         case 2:
             if( mcpsIndication->BufferSize == 1 )
             {
-                AppLedStateOn = mcpsIndication->Buffer[0] & 0x01;
-                GpioWrite( &Led3, ( ( AppLedStateOn & 0x01 ) != 0 ) ? 1 : 0 );
+                AppLedStateOn = (mcpsIndication->Buffer[0] & 0x01) != 0;
+                GpioWrite( &Led3,  AppLedStateOn );
             }
             break;
         case 224:
@@ -664,6 +678,9 @@ int main( void )
                 TimerInit( &Led2Timer, OnLed2TimerEvent );
                 TimerSetValue( &Led2Timer, 25 );
 
+                TimerInit( &FixTimer, OnFixTimerEvent );
+                TimerSetValue( &FixTimer,  FIX_WAIT_TIME );
+
                 mibReq.Type = MIB_ADR;
                 mibReq.Param.AdrEnable = LORAWAN_ADR_ON;
                 LoRaMacMibSetRequestConfirm( &mibReq );
@@ -683,9 +700,9 @@ int main( void )
                 LoRaMacChannelAdd( 7, ( ChannelParams_t )LC8 );
                 LoRaMacChannelAdd( 8, ( ChannelParams_t )LC9 );
                 LoRaMacChannelAdd( 9, ( ChannelParams_t )LC10 );
-#endif
+#endif /* USE_SEMTECH_DEFAULT_CHANNEL_LINEUP == 1 */
 
-#endif
+#endif /* USE_BAND_868 */
                 DeviceState = DEVICE_STATE_JOIN;
                 break;
             }
@@ -710,7 +727,7 @@ int main( void )
 
                 // Schedule next packet transmission
                 TxDutyCycleTime = OVER_THE_AIR_ACTIVATION_DUTYCYCLE;
-                DeviceState = DEVICE_STATE_CYCLE;
+                DeviceState = DEVICE_STATE_SEND_DONE;
 	        TimerSetValue( &TxNextPacketTimer, TxDutyCycleTime );
 	        TimerStart( &TxNextPacketTimer );
 #else
@@ -744,8 +761,8 @@ int main( void )
                 mibReq.Param.IsNetworkJoined = true;
                 LoRaMacMibSetRequestConfirm( &mibReq );
 
-                DeviceState = DEVICE_STATE_SEND;
-#endif
+                DeviceState = DEVICE_STATE_START_FIX;
+#endif /* OVER_THE_AIR_ACTIVATION != 0 */
                 break;
             }
             case DEVICE_STATE_SEND:
@@ -766,13 +783,34 @@ int main( void )
                     // Schedule next packet transmission
                     TxDutyCycleTime = APP_TX_DUTYCYCLE + randr( -APP_TX_DUTYCYCLE_RND, APP_TX_DUTYCYCLE_RND );
                 }
-                DeviceState = DEVICE_STATE_CYCLE;
+                DeviceState = DEVICE_STATE_SEND_DONE;
                 // Schedule next packet transmission
 	        TimerSetValue( &TxNextPacketTimer, TxDutyCycleTime );
 	        TimerStart( &TxNextPacketTimer );
 		break;
             }
-            case DEVICE_STATE_CYCLE:
+	    case DEVICE_STATE_START_FIX:
+	    {
+	        TimerSetValue( &FixTimer, FIX_WAIT_TIME );
+		TimerStart( &FixTimer );
+		DeviceState = DEVICE_STATE_WAIT_FIX;
+		break;
+	    }
+	    case DEVICE_STATE_WAIT_FIX:
+	    {
+		if ( GpsHasFix() )
+		{
+		    TimerStop( &FixTimer );
+		    DeviceState = DEVICE_STATE_END_FIX;
+		}
+		break;
+	    }
+	    case DEVICE_STATE_END_FIX:
+	    {
+		DeviceState = DEVICE_STATE_SEND;
+		break;
+	    }
+            case DEVICE_STATE_SEND_DONE:
             {
 		if ( GpsCanSleep() )
 		    DeviceState = DEVICE_STATE_SLEEP_ENTER;

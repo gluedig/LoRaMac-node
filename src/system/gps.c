@@ -632,16 +632,15 @@ void GpsResetPosition( void )
     Longitude = 0;
     LatitudeBinary = 0;
     LongitudeBinary = 0;
+    memset(&NmeaGpsData, 0, sizeof(tNmeaGpsData));
 }
 
 bool GpsCanSleep( void )
 {
-    if ( GpsHasFix() && (NmeaMessagesOk > 10) )
+    if ( GpsHasFix() || (NmeaMessagesOk > 10) )
 	return true;
-    if ( NmeaMessagesOk > 90 )
-	    return true;
-
-    return false;
+    else
+	return false;
 }
 
 void GpsResetCounter( void )

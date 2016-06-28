@@ -108,6 +108,7 @@ void GpsMcuSleep( void )
 	UartDeInit( &Uart1 );
 	asleep = true;
 	GpsResetCounter();
+	GpsResetPosition();
     }
 }
 

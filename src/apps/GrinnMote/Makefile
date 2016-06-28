@@ -40,7 +40,7 @@ SIZE    = $(GCC_BIN)arm-none-eabi-size
 CPU = -mcpu=cortex-m3 -mthumb
 CC_FLAGS = $(CPU) -c -fno-common -fmessage-length=0 -Wall -Wextra -fno-exceptions -ffunction-sections -fdata-sections -fomit-frame-pointer -MMD -MP
 CC_FLAGS += -Werror=implicit-function-declaration
-CC_SYMBOLS = -DSTM32L151xB -DUSE_BAND_868 -DUSE_HAL_DRIVER -DUSE_DEBUGGER
+CC_SYMBOLS = -DSTM32L151xB -DUSE_BAND_868 -DUSE_HAL_DRIVER -DUSE_DEBUGGER -DBME280_API
 
 LD_FLAGS = $(CPU) -Wl,--gc-sections --specs=nano.specs -Wl,-Map=$(PROJECT).map,--cref
 #LD_FLAGS += -Wl,--wrap,main -u _printf_float -u _scanf_float
