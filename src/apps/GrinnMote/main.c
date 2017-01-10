@@ -488,7 +488,6 @@ static void McpsIndication( McpsIndication_t *mcpsIndication )
             if( mcpsIndication->BufferSize == 1 )
             {
                 AppLedStateOn = (mcpsIndication->Buffer[0] & 0x01) != 0;
-                GpioWrite( &Led3,  AppLedStateOn );
             }
             break;
         case 224:
@@ -705,7 +704,7 @@ int main( void )
 
                 // Schedule next packet transmission
                 TxDutyCycleTime = OVER_THE_AIR_ACTIVATION_DUTYCYCLE;
-                DeviceState = DEVICE_STATE_SEND_DONE;
+                DeviceState = DEVICE_STATE_START_FIX;
 	        TimerSetValue( &TxNextPacketTimer, TxDutyCycleTime );
 	        TimerStart( &TxNextPacketTimer );
 #else
@@ -745,7 +744,6 @@ int main( void )
             }
 	    case DEVICE_STATE_START_FIX:
 	    {
-		GpioWrite( &Led3, 0 );
 	        TimerSetValue( &FixTimer, FIX_WAIT_TIME );
 		TimerStart( &FixTimer );
 		DeviceState = DEVICE_STATE_WAIT_FIX;
@@ -753,18 +751,10 @@ int main( void )
 	    }
 	    case DEVICE_STATE_WAIT_FIX:
 	    {
-/*		if ( GpsHasFix() )
-		{
-		    GpioWrite( &Led3, 1 );
-		    TimerStop( &FixTimer );
-		    DeviceState = DEVICE_STATE_END_FIX;
-		}
-*/		break;
+		break;
 	    }
 	    case DEVICE_STATE_END_FIX:
 	    {
-		if ( GpsHasFix() )
-		    GpioWrite( &Led3, 1 );
 		DeviceState = DEVICE_STATE_SEND;
 		break;
 	    }
@@ -835,7 +825,8 @@ int main( void )
 	    case DEVICE_STATE_WAKEUP:
 	    {
 		BoardWakePeriph();
-		DeviceState = NextDeviceState;
+	        GpioWrite( &Led3,  AppLedStateOn );
+ 		DeviceState = NextDeviceState;
 		break;
 	    }
             default:
