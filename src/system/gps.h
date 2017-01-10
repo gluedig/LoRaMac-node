@@ -79,7 +79,7 @@ void GpsConvertPositionIntoBinary( void );
  * \brief Converts the latest Position (latitude and Longitude) from ASCII into
  *        DMS numerical format
  */
-void GpsConvertPositionFromStringToNumerical( void );
+void GpsConvertPositionFromStringToNumerical( tNmeaGpsData *NmeaGpsData );
 
 /*!
  * \brief Gets the latest Position (latitude and Longitude) as two double values
@@ -125,7 +125,7 @@ int16_t GpsGetLatestGpsAltitude( void );
 /*!
  * \brief Format GPS data into numeric and binary formats
  */
-void GpsFormatGpsData( void );
+void GpsFormatGpsData( tNmeaGpsData *NmeaGpsData );
 
 /*!
  * \brief Resets the GPS position variables

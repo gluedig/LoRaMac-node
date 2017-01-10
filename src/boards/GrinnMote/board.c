@@ -96,8 +96,16 @@ void BoardInitPeriph( void )
     // Init GPS
     GpsInit( );
 
-    // Switch LED
+    // Switch LEDs
     GpioWrite( &Led1, 1 );
+    GpioWrite( &Led2, 1 );
+    GpioWrite( &Led3, 1 );
+    GpioWrite( &Led4, 1 );
+    DelayMs(500);
+    GpioWrite( &Led1, 0 );
+    GpioWrite( &Led2, 0 );
+    GpioWrite( &Led3, 0 );
+    GpioWrite( &Led4, 0 );
 }
 
 void BoardInitMcu( void )

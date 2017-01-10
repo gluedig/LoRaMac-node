@@ -81,14 +81,16 @@ void GpsMcuInit( void )
 
 void GpsMcuWake( void )
 {
-    char sleep_cmd[] = "$PMTK225,0*2B\r\n";
+    char fullpwr_cmd[] = "$PMTK225,0*2B\r\n";
+    char hotstart_cmd[] = "$PMTK101*16\r\n";
 
     FifoInit( &Uart1.FifoRx, RxBuffer, FIFO_RX_SIZE );
     FifoInit( &Uart1.FifoTx, TxBuffer, FIFO_TX_SIZE );
     UartInit( &Uart1, UART_1, UART_TX, UART_RX );
     UartConfig( &Uart1, RX_TX, 9600, UART_8_BIT, UART_1_STOP_BIT, NO_PARITY, NO_FLOW_CTRL );
     Uart1.IrqNotify = GpsMcuIrqNotify;
-    UartPutBuffer( &Uart1, (uint8_t*)sleep_cmd, 15);
+    UartPutBuffer( &Uart1, (uint8_t*)fullpwr_cmd, 15);
+    UartPutBuffer( &Uart1, (uint8_t*)hotstart_cmd, 13);
 
     TimerStart( &GpsWakeupTimer );
 }
@@ -104,6 +106,7 @@ void GpsMcuSleep( void )
 {
     if ( !asleep ) {
 	char wake_cmd[] = "$PMTK161,0*28\r\n";
+	//char wake_cmd[] = "$PMTK161,1*0D\r\n";
 	UartPutBuffer( &Uart1, (uint8_t*)wake_cmd, 15 );
 	UartDeInit( &Uart1 );
 	asleep = true;

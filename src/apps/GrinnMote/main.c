@@ -22,22 +22,27 @@ Maintainer: Miguel Luis and Gregory Cristian
 #include "LoRaMac.h"
 #include "Comissioning.h"
 
-
-#define FIX_WAIT_TIME    45000 //45s
+/*!
+ * GPS fix waiting time.
+ * value in [ms]
+ */
+#define FIX_WAIT_TIME    45000
 
 /*!
  * Join requests trials duty cycle.
+ * value in [ms]
  */
-#define OVER_THE_AIR_ACTIVATION_DUTYCYCLE           10000 // 10 [s] value in ms
+#define OVER_THE_AIR_ACTIVATION_DUTYCYCLE           10000
 
 /*!
- * Defines the application data transmission duty cycle. 5s, value in [ms].
+ * Defines the application data transmission duty cycle.
+ * value in [ms]
  */
-#define APP_TX_DUTYCYCLE                            90000
+#define APP_TX_DUTYCYCLE                            60000
 
 /*!
- * Defines a random delay for application data transmission duty cycle. 1s,
- * value in [ms].
+ * Defines a random delay for application data transmission duty cycle.
+ * value in [ms]
  */
 #define APP_TX_DUTYCYCLE_RND                        5000
 
@@ -93,15 +98,8 @@ Maintainer: Miguel Luis and Gregory Cristian
 /*!
  * User application data buffer size
  */
-#if defined( USE_BAND_868 )
-
 #define LORAWAN_APP_DATA_SIZE                       16
 
-#elif defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID )
-
-#define LORAWAN_APP_DATA_SIZE                       11
-
-#endif
 
 #if( OVER_THE_AIR_ACTIVATION != 0 )
 
@@ -172,6 +170,7 @@ static TimerEvent_t Led1Timer;
 static TimerEvent_t Led2Timer;
 
 static TimerEvent_t FixTimer;
+static TimerEvent_t UplinkTimer;
 
 /*!
  * Indicates if a new packet can be sent
@@ -187,9 +186,13 @@ static enum eDeviceState
     DEVICE_STATE_JOIN,
     DEVICE_STATE_SEND,
     DEVICE_STATE_SEND_DONE,
+
     DEVICE_STATE_START_FIX,
     DEVICE_STATE_WAIT_FIX,
     DEVICE_STATE_END_FIX,
+    DEVICE_STATE_UPLINK_WAIT,
+
+    DEVICE_STATE_UPLINK_DONE,
     DEVICE_STATE_SLEEP_ENTER,
     DEVICE_STATE_SLEEP,
     DEVICE_STATE_WAKEUP
@@ -223,65 +226,31 @@ static void PrepareTxFrame( uint8_t port )
     {
     case 2:
         {
-#if defined( USE_BAND_868 )
-            uint16_t pressure = 0;
-            int16_t altitudeBar = 0;
             int16_t temperature = 0;
-            int32_t latitude, longitude = 0;
-            int16_t altitudeGps = 0xFFFF;
+            int32_t latitude = 0, longitude = 0;
+            int16_t altitudeGps = 0;
             uint8_t batteryLevel = 0;
 
             temperature = MPC9808ReadTemperature( );       // in °C * 100
             batteryLevel = BoardGetBatteryLevel( );                             // 1 (very low) to 254 (fully charged)
 	    if ( GpsHasFix() ) {
-         	GpioWrite( &Led3, 1 );
 		GpsGetLatestGpsPositionBinary( &latitude, &longitude );
 		altitudeGps = GpsGetLatestGpsAltitude( );                           // in m
-	    } else {
-         	GpioWrite( &Led3, 0 );
 	    }
 
             AppData[0] = AppLedStateOn;
-            AppData[1] = ( pressure >> 8 ) & 0xFF;
-            AppData[2] = pressure & 0xFF;
-            AppData[3] = ( temperature >> 8 ) & 0xFF;
-            AppData[4] = temperature & 0xFF;
-            AppData[5] = ( altitudeBar >> 8 ) & 0xFF;
-            AppData[6] = altitudeBar & 0xFF;
-            AppData[7] = batteryLevel;
-            AppData[8] = ( latitude >> 16 ) & 0xFF;
-            AppData[9] = ( latitude >> 8 ) & 0xFF;
-            AppData[10] = latitude & 0xFF;
-            AppData[11] = ( longitude >> 16 ) & 0xFF;
-            AppData[12] = ( longitude >> 8 ) & 0xFF;
-            AppData[13] = longitude & 0xFF;
-            AppData[14] = ( altitudeGps >> 8 ) & 0xFF;
-            AppData[15] = altitudeGps & 0xFF;
-#elif defined( USE_BAND_915 ) || defined( USE_BAND_915_HYBRID )
-            int16_t temperature = 0;
-            int32_t latitude, longitude = 0;
-            uint16_t altitudeGps = 0xFFFF;
-            uint8_t batteryLevel = 0;
-
-            temperature = MPC9808ReadTemperature( );       // in °C * 100
-
-            batteryLevel = BoardGetBatteryLevel( );                             // 1 (very low) to 254 (fully charged)
-            GpsGetLatestGpsPositionBinary( &latitude, &longitude );
-            altitudeGps = GpsGetLatestGpsAltitude( );                           // in m
-
-            AppData[0] = AppLedStateOn;
-            AppData[1] = temperature;                                           // Signed degrees Celcius in half degree units. So,  +/-63 C
-            AppData[2] = batteryLevel;                                          // Per LoRaWAN spec; 0=Charging; 1...254 = level, 255 = N/A
-            AppData[3] = ( latitude >> 16 ) & 0xFF;
-            AppData[4] = ( latitude >> 8 ) & 0xFF;
-            AppData[5] = latitude & 0xFF;
-            AppData[6] = ( longitude >> 16 ) & 0xFF;
-            AppData[7] = ( longitude >> 8 ) & 0xFF;
-            AppData[8] = longitude & 0xFF;
-            AppData[9] = ( altitudeGps >> 8 ) & 0xFF;
-            AppData[10] = altitudeGps & 0xFF;
-#endif
-        }
+            AppData[1]= batteryLevel;
+	    AppData[2] = ( temperature >> 8 ) & 0xFF;
+            AppData[3] = temperature & 0xFF;
+            AppData[4] = ( latitude >> 16 ) & 0xFF;
+            AppData[5] = ( latitude >> 8 ) & 0xFF;
+            AppData[6] = latitude & 0xFF;
+            AppData[7] = ( longitude >> 16 ) & 0xFF;
+            AppData[8] = ( longitude >> 8 ) & 0xFF;
+            AppData[9] = longitude & 0xFF;
+            AppData[10] = ( altitudeGps >> 8 ) & 0xFF;
+            AppData[11] = altitudeGps & 0xFF;
+       }
         break;
     case 224:
         if( ComplianceTest.LinkCheck == true )
@@ -411,6 +380,12 @@ static void OnFixTimerEvent( void )
 {
     TimerStop( &FixTimer );
     DeviceState = DEVICE_STATE_END_FIX;
+}
+
+static void OnUplinkTimerEvent( void )
+{
+    TimerStop( &UplinkTimer );
+    DeviceState = DEVICE_STATE_UPLINK_DONE;
 }
 
 /*!
@@ -673,13 +648,16 @@ int main( void )
                 TimerInit( &TxNextPacketTimer, OnTxNextPacketTimerEvent );
 
                 TimerInit( &Led1Timer, OnLed1TimerEvent );
-                TimerSetValue( &Led1Timer, 25 );
+                TimerSetValue( &Led1Timer, 350 );
 
                 TimerInit( &Led2Timer, OnLed2TimerEvent );
-                TimerSetValue( &Led2Timer, 25 );
+                TimerSetValue( &Led2Timer, 350 );
 
                 TimerInit( &FixTimer, OnFixTimerEvent );
-                TimerSetValue( &FixTimer,  FIX_WAIT_TIME );
+                TimerSetValue( &FixTimer, FIX_WAIT_TIME );
+
+                TimerInit( &UplinkTimer, OnUplinkTimerEvent );
+                TimerSetValue( &UplinkTimer, 5000 );
 
                 mibReq.Type = MIB_ADR;
                 mibReq.Param.AdrEnable = LORAWAN_ADR_ON;
@@ -765,15 +743,68 @@ int main( void )
 #endif /* OVER_THE_AIR_ACTIVATION != 0 */
                 break;
             }
+	    case DEVICE_STATE_START_FIX:
+	    {
+		GpioWrite( &Led3, 0 );
+	        TimerSetValue( &FixTimer, FIX_WAIT_TIME );
+		TimerStart( &FixTimer );
+		DeviceState = DEVICE_STATE_WAIT_FIX;
+		break;
+	    }
+	    case DEVICE_STATE_WAIT_FIX:
+	    {
+/*		if ( GpsHasFix() )
+		{
+		    GpioWrite( &Led3, 1 );
+		    TimerStop( &FixTimer );
+		    DeviceState = DEVICE_STATE_END_FIX;
+		}
+*/		break;
+	    }
+	    case DEVICE_STATE_END_FIX:
+	    {
+		if ( GpsHasFix() )
+		    GpioWrite( &Led3, 1 );
+		DeviceState = DEVICE_STATE_SEND;
+		break;
+	    }
             case DEVICE_STATE_SEND:
-            {
+	    {
                 if( NextTx == true )
                 {
                     PrepareTxFrame( AppPort );
 
                     NextTx = SendFrame( );
                 }
-                if( ComplianceTest.Running == true )
+            	DeviceState = DEVICE_STATE_SEND_DONE;
+		break;
+            }
+	    case DEVICE_STATE_SEND_DONE:
+            {
+		uint32_t uplink_timer = 5000;
+
+	        MibRequestConfirm_t mibReq;
+	        LoRaMacStatus_t status;
+
+		mibReq.Type = MIB_MAX_RX_WINDOW_DURATION;
+		status = LoRaMacMibGetRequestConfirm( &mibReq );
+	        if( status == LORAMAC_STATUS_OK )
+		{
+		    uplink_timer = mibReq.Param.MaxRxWindow;
+		}
+
+		TimerSetValue(&UplinkTimer, uplink_timer);
+		TimerStart(&UplinkTimer);
+		DeviceState = DEVICE_STATE_UPLINK_WAIT;
+		break;
+            }
+	    case DEVICE_STATE_UPLINK_WAIT:
+	    {
+		break;
+	    }
+	    case DEVICE_STATE_UPLINK_DONE:
+	    {
+		if( ComplianceTest.Running == true )
                 {
                     // Schedule next packet transmission
                     TxDutyCycleTime = 5000; // 5000 ms
@@ -783,39 +814,13 @@ int main( void )
                     // Schedule next packet transmission
                     TxDutyCycleTime = APP_TX_DUTYCYCLE + randr( -APP_TX_DUTYCYCLE_RND, APP_TX_DUTYCYCLE_RND );
                 }
-                DeviceState = DEVICE_STATE_SEND_DONE;
                 // Schedule next packet transmission
 	        TimerSetValue( &TxNextPacketTimer, TxDutyCycleTime );
 	        TimerStart( &TxNextPacketTimer );
-		break;
-            }
-	    case DEVICE_STATE_START_FIX:
-	    {
-	        TimerSetValue( &FixTimer, FIX_WAIT_TIME );
-		TimerStart( &FixTimer );
-		DeviceState = DEVICE_STATE_WAIT_FIX;
+		DeviceState = DEVICE_STATE_SLEEP_ENTER;
 		break;
 	    }
-	    case DEVICE_STATE_WAIT_FIX:
-	    {
-		if ( GpsHasFix() )
-		{
-		    TimerStop( &FixTimer );
-		    DeviceState = DEVICE_STATE_END_FIX;
-		}
-		break;
-	    }
-	    case DEVICE_STATE_END_FIX:
-	    {
-		DeviceState = DEVICE_STATE_SEND;
-		break;
-	    }
-            case DEVICE_STATE_SEND_DONE:
-            {
-		if ( GpsCanSleep() )
-		    DeviceState = DEVICE_STATE_SLEEP_ENTER;
-		break;
-            }
+
             case DEVICE_STATE_SLEEP_ENTER:
             {
 		BoardSleepPeriph();
